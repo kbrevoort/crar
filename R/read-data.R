@@ -13,7 +13,7 @@ import_disclosure_file_d11 <- function(year) {
   if (length(year) != 1L)
     stop('year supplied to import_disclosure_file_d11 must be a scalar')
 
-  zip_name <- sprintf('data/zipped/%02dexp_discl.zip', year)
+  zip_name <- sprintf('data/zipped/%02dexp_discl.zip', year %% 100)
 
   # Some zip files are archives of multiple files and
   # others have all of the data in a single file. This
