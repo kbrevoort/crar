@@ -21,22 +21,29 @@ import_disclosure_file_d11 <- function(year) {
   # character vector of file information.
   file_list <- unzip(zip_name, list = TRUE)
   if (length(file_list$Name) == 1) {
-    in_chr <- unzip(zip_name, files = file_list$Name[[1]]) %>%
+    in_tbl <- unzip(zip_name, files = file_list$Name[[1]]) %>%
       readr::read_lines() %>%
       tibble::tibble(V1 = .) %>%
-      filter(substr(V1, 1, 4) == 'D1-1') %>%
-      mutate(V1 = substring(V1, 6))
+      filter(substr(V1, 1, 4) == 'D1-1')
   } else {
-    in_chr <- filter(file_list, stringr::str_detect(Name, 'D11.dat')) %>%
+    in_tbl <- filter(file_list, stringr::str_detect(Name, 'D11.dat')) %>%
       pull(Name) %>%
       unzip(zip_name, files = .) %>%
-      readr::read_lines()
+      readr::read_lines() %>%
+      tibble::tibble(V1 = .)
   }
 
-  tibble::tibble(V1 = in_chr) %>%
-    filter(substr(V1, 1, 4) == 'D1-1') %>%
-    mutate(respondent = substr(V1, 6, 15),
-           agency = factor(substr(V1, 16, 17),
+  # Some files have a 4-digit metro area and others have 5 digit.
+  # This detects a 5-digit metro area and fixes it.
+  if (all(unique(substr(in_tbl$V1, 36, 36)) %in% c('Y', 'N', ' '))) {
+    in_tbl$V1 <- sprintf('%s %s',
+                         substr(in_tbl$V1, 1, 31),
+                         substring(in_tbl$V1, 32))
+  }
+
+  mutate(in_tbl,
+         respondent = substr(V1, 6, 15),
+           agency = factor(substr(V1, 16, 16),
                            levels = c('1', '2', '3', '4'),
                            labels = c('OCC', 'FRB', 'FDIC', 'OTS')),
            year = to_numeric(substr(V1, 17, 20)),
@@ -96,7 +103,8 @@ import_disclosure_file_d11 <- function(year) {
            num_sbl = as.numeric(substr(V1, 88, 93)),
            amt_sbl = as.numeric(substr(V1, 94, 101)),
            num_affiliate = as.numeric(substr(V1, 102, 107)),
-           amt_affiliate = as.numeric(substr(V1, 108, 115)))
+           amt_affiliate = as.numeric(substr(V1, 108, 115))) %>%
+    select(-V1)
 }
 
 #' Convert Character to Numeric
