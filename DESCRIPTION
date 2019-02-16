@@ -14,3 +14,4 @@ Imports:
     dplyr,
     stringr,
     tibble
+RoxygenNote: 6.1.0
