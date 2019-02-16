@@ -1,3 +1,11 @@
+assemble_disclosure_d11 <- function(geog) {
+  list.files(path = 'data/zipped', pattern = 'discl.zip') %>%
+    substr(1, 2) %>%
+    unique() %>%
+    as.numeric() %>%
+    purrr::map_df(import_disclosure_file_d11)
+}
+
 #' Import Transmittal File
 #'
 #' This function imports the transmittal file for each year of CRA
@@ -10,31 +18,22 @@ import_transmittal_file <- function(year) {
   zip_name <- sprintf('data/zipped/%02dexp_trans.zip', year %% 100)
   file_list <- unzip(zip_name, list = TRUE)
 
-  unzip(zip_name, files = file_list$Name[[1]]) %>%
-    readr::read_fwf(col_positions = fwf_widths(widths = c(10, 1, 4, 30, 40, 25, 2, 10, 10, 10, 10),
-                                               col_names = c('respondent',
-                                                             'agency',
-                                                             'year',
-                                                             'respondent_name',
-                                                             'respondent_address',
-                                                             'respondent_city',
-                                                             'respondent_state',
-                                                             'respondent_zip',
-                                                             'tax_id',
-                                                             'id_rssd',
-                                                             'assets')),
-                    col_types = cols(respondent = col_integer(),
-                                     agency = col_character(),
-                                     year = col_integer(),
-                                     respondent_name = col_character(),
-                                     respondent_address = col_character(),
-                                     respondent_city = col_character(),
-                                     respondent_state = col_character(),
-                                     respondent_zip = col_character(),
-                                     tax_id = col_character(),
-                                     id_rssd = col_integer(),
-                                     assets = col_integer())) %>%
-    mutate(agency = factor_agency(agency))
+  in_chr <- unzip(zip_name, files = file_list$Name[[1]]) %>%
+    readr::read_lines() %>%
+    stringr::str_pad(width = 152, side = 'right')
+
+  tibble::tibble(respondent = to_numeric(substr(in_chr, 1, 10)),
+                 agency = factor_agency(substr(in_chr, 11, 11)),
+                 year = to_numeric(substr(in_chr, 12, 15)),
+                 respondent_name = substr(in_chr, 16, 45),
+                 respondent_address = substr(in_chr, 46, 85),
+                 respondent_city = substr(in_chr, 86, 110),
+                 respondent_state = substr(in_chr, 111, 112),
+                 respondent_zip = substr(in_chr, 113, 122),
+                 tax_id = substr(in_chr, 123, 132),
+                 id_rssd = stringr::str_trim(substr(in_chr, 133, 142)),
+                 assets = to_numeric(substr(in_chr, 143, 152))) %>%
+    mutate(id_rssd = ifelse(id_rssd == '', -1 * respondent, as.numeric(id_rssd)))
 }
 
 #' Import Disclosure File D1-1
