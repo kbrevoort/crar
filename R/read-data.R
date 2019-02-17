@@ -1,9 +1,20 @@
-assemble_disclosure_d11 <- function(geog) {
+#' Assemble Disclosure D1-1 Table
+#'
+#' This function reads in all available CRA data and assembles
+#' a joint tibble with the available data.
+#' @param geog The geography (or report_level) for which the data
+#' are to be pulled. See the factor levels for that variable for
+#' options.
+#' @return A tibble of data
+#' @importFrom purrr map_df
+#' @importFrom dplyr filter
+assemble_disclosure_d11 <- function(geog = 'County Total') {
   list.files(path = 'data/zipped', pattern = 'discl.zip') %>%
     substr(1, 2) %>%
     unique() %>%
     as.numeric() %>%
-    purrr::map_df(import_disclosure_file_d11)
+    purrr::map_df(import_disclosure_file_d11) %>%
+    filter(report_level == geog)
 }
 
 #' Import Transmittal File
@@ -19,7 +30,8 @@ import_transmittal_file <- function(year) {
   file_list <- unzip(zip_name, list = TRUE)
 
   in_chr <- unzip(zip_name, files = file_list$Name[[1]]) %>%
-    readr::read_lines() %>%
+    readr::read_lines(progress = FALSE) %>%
+    stringr::str_replace('\xb6', 'O') %>%  # This code appears in at least one archive
     stringr::str_pad(width = 152, side = 'right')
 
   tibble::tibble(respondent = to_numeric(substr(in_chr, 1, 10)),
@@ -71,13 +83,15 @@ import_disclosure_file_d11 <- function(year) {
       tibble::tibble(V1 = .)
   }
 
+  # Most files use 5 digits for the table name, but some only use 4
+  # In those cases with 4, add a blank space
+  if (!all(unique(substr(in_tbl$V1, 5, 5)) == ' '))
+    in_tbl$V1 <- add_space_at(in_tbl$V1, 5)
+
   # Some files have a 4-digit metro area and others have 5 digit.
   # This detects a 5-digit metro area and fixes it.
-  if (all(unique(substr(in_tbl$V1, 36, 36)) %in% c('Y', 'N', ' '))) {
-    in_tbl$V1 <- sprintf('%s %s',
-                         substr(in_tbl$V1, 1, 31),
-                         substring(in_tbl$V1, 32))
-  }
+  if (all(unique(substr(in_tbl$V1, 36, 36)) %in% c('Y', 'N', ' ')))
+    in_tbl$V1 <- add_space_at(in_tbl$V1, 32)
 
   # Read in the transmittal data to get a respondent to id_rssd map
   idrssd_map <- import_transmittal_file(year) %>%
@@ -192,5 +206,9 @@ factor_agency <- function(x) {
          labels = c('OCC', 'FRB', 'FDIC', 'OTS'))
 }
 
-
+add_space_at <- function(x, n) {
+  sprintf('%s %s',
+          substr(x, 1, n - 1),
+          substring(x, n))
+}
 

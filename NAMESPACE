@@ -2,6 +2,10 @@
 
 importFrom(dplyr,filter)
 importFrom(dplyr,mutate)
+importFrom(purrr,map_df)
+importFrom(readr,cols)
+importFrom(readr,fwf_widths)
+importFrom(readr,read_fwf)
 importFrom(readr,read_lines)
 importFrom(stringr,str_trim)
 importFrom(tibble,tibble)
