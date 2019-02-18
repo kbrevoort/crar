@@ -29,7 +29,7 @@ import_transmittal_file <- function(year) {
   zip_name <- sprintf('data/zipped/%02dexp_trans.zip', year %% 100)
   file_list <- unzip(zip_name, list = TRUE)
 
-  in_chr <- unzip(zip_name, files = file_list$Name[[1]]) %>%
+  in_chr <- unz(zip_name, file_list$Name[[1]]) %>%
     readr::read_lines(progress = FALSE) %>%
     stringr::str_replace('\xb6', 'O') %>%  # This code appears in at least one archive
     stringr::str_pad(width = 152, side = 'right')
@@ -71,50 +71,44 @@ import_disclosure_file_d11 <- function(year) {
   # character vector of file information.
   file_list <- unzip(zip_name, list = TRUE)
   if (length(file_list$Name) == 1) {
-    in_tbl <- unzip(zip_name, files = file_list$Name[[1]]) %>%
-      readr::read_lines() %>%
+    in_tbl <- unz(zip_name, file_list$Name[[1]]) %>%
+      readr::read_lines(progress = FALSE) %>%
       tibble::tibble(V1 = .) %>%
       filter(substr(V1, 1, 4) == 'D1-1')
   } else {
     in_tbl <- filter(file_list, stringr::str_detect(Name, 'D11.dat')) %>%
       pull(Name) %>%
-      unzip(zip_name, files = .) %>%
-      readr::read_lines() %>%
+      unz(zip_name, filename = .) %>%
+      readr::read_lines(progress = FALSE) %>%
       tibble::tibble(V1 = .)
   }
 
-  # Most files use 5 digits for the table name, but some only use 4
-  # In those cases with 4, add a blank space
-  if (!all(unique(substr(in_tbl$V1, 5, 5)) == ' '))
-    in_tbl$V1 <- add_space_at(in_tbl$V1, 5)
-
-  # Some files have a 4-digit metro area and others have 5 digit.
-  # This detects a 5-digit metro area and fixes it.
-  if (all(unique(substr(in_tbl$V1, 36, 36)) %in% c('Y', 'N', ' ')))
-    in_tbl$V1 <- add_space_at(in_tbl$V1, 32)
+  w <- get_widths(year) # Widths by file year
+  s <- cumsum(c(1, w))[1:length(w)] # starting point for each variable
+  e <- cumsum(w)                    # end point for each variable
 
   # Read in the transmittal data to get a respondent to id_rssd map
   idrssd_map <- import_transmittal_file(year) %>%
     select(respondent, id_rssd)
 
   ret_dt <- mutate(in_tbl,
-                   respondent = to_numeric(substr(V1, 6, 15)),
-                   agency = factor_agency(substr(V1, 16, 16)),
-                   year = to_numeric(substr(V1, 17, 20)),
-                   loan_type = substr(V1, 21, 21),
-                   action = substr(V1, 22, 22),
-                   state = to_numeric(substr(V1, 23, 24)),
-                   county = to_numeric(substr(V1, 25, 27)),
-                   metro_area = to_numeric(substr(V1, 28, 32)),
-                   assessment_area = to_numeric(substr(V1, 33, 36)),
-                   partial_county_fl = to_logical(substr(V1, 37, 37)),
-                   split_county_fl = to_logical(substr(V1, 38, 38)),
-                   population_f = factor(substr(V1, 39, 39),
+                   respondent = to_numeric(substr(V1, s[2], e[2])),
+                   agency = factor_agency(substr(V1, s[3], e[3])),
+                   year = to_numeric(substr(V1, s[4], e[4])),
+                   loan_type = substr(V1, s[5], e[5]),
+                   action = substr(V1, s[6], e[6]),
+                   state = to_numeric(substr(V1, s[7], e[7])),
+                   county = to_numeric(substr(V1, s[8], e[8])),
+                   metro_area = to_numeric(substr(V1, s[9], e[9])),
+                   assessment_area = to_numeric(substr(V1, s[10], e[10])),
+                   partial_county_fl = to_logical(substr(V1, s[11], e[11])),
+                   split_county_fl = to_logical(substr(V1, s[12], e[12])),
+                   population_f = factor(substr(V1, s[13], e[13]),
                                          levels = c('S', 'L', ' '),
                                          labels = c('<= 500,000 in population',
                                                     '>500,000 in population',
                                                     'Total')),
-                   income_group = factor(as.numeric(substr(V1, 40, 42)),
+                   income_group = factor(as.numeric(substr(V1, s[14], e[14])),
                                          levels = c(1:15, 101:106),
                                          labels = c('< 10% of MFI',
                                                     '10% to 20% of MFI',
@@ -137,7 +131,7 @@ import_disclosure_file_d11 <- function(year) {
                                                     'Upper Income',
                                                     'Unknown Income',
                                                     'Unknown Tract')),
-                   report_level = factor(as.numeric(substr(V1, 43, 45)),
+                   report_level = factor(as.numeric(substr(V1, s[15], e[15])),
                                          levels = c(4, 6, 8, 10, 20, 30, 40, 50, 60),
                                          labels = c('Total Inside & Outside Assessment Area (AA)',
                                                     'Total Inside AA',
@@ -148,16 +142,16 @@ import_disclosure_file_d11 <- function(year) {
                                                     'County Total',
                                                     'Total Inside AA in County',
                                                     'Total Outside AA in County')),
-                   num_le100k = as.numeric(substr(V1, 46, 51)),
-                   amt_le100k = as.numeric(substr(V1, 52, 59)),
-                   num_100to250k = as.numeric(substr(V1, 60, 65)),
-                   amt_100to250k = as.numeric(substr(V1, 66, 73)),
-                   num_250to1m = as.numeric(substr(V1, 74, 79)),
-                   amt_250to1m = as.numeric(substr(V1, 80, 87)),
-                   num_sbl = as.numeric(substr(V1, 88, 93)),
-                   amt_sbl = as.numeric(substr(V1, 94, 101)),
-                   num_affiliate = as.numeric(substr(V1, 102, 107)),
-                   amt_affiliate = as.numeric(substr(V1, 108, 115))) %>%
+                   num_le100k = as.numeric(substr(V1, s[16], e[16])),
+                   amt_le100k = as.numeric(substr(V1, s[17], e[17])),
+                   num_100to250k = as.numeric(substr(V1, s[18], e[18])),
+                   amt_100to250k = as.numeric(substr(V1, s[19], e[19])),
+                   num_250to1m = as.numeric(substr(V1, s[20], e[20])),
+                   amt_250to1m = as.numeric(substr(V1, s[21], e[21])),
+                   num_sbl = as.numeric(substr(V1, s[22], e[22])),
+                   amt_sbl = as.numeric(substr(V1, s[23], e[23])),
+                   num_affiliate = as.numeric(substr(V1, s[24], e[24])),
+                   amt_affiliate = as.numeric(substr(V1, s[25], e[25]))) %>%
     left_join(idrssd_map, by = 'respondent') %>%
     select(-V1, -respondent)
 
@@ -210,5 +204,25 @@ add_space_at <- function(x, n) {
   sprintf('%s %s',
           substr(x, 1, n - 1),
           substring(x, n))
+}
+
+get_widths <- function(year) {
+  short_year <- year %% 100L
+
+  if (year == 96L) {
+    ret_val <- c(4, 10, 1, 4, 1, 1, 2, 3, 4, 4,
+                 1, 1, 1, 3, 3, 6, 8, 6, 8, 6,
+                 8, 6, 8, 6, 8)
+  } else if (year %in% (c(1997:2003) %% 100)) {
+    ret_val <- c(5, 10, 1, 4, 1, 1, 2, 3, 4, 4,
+                 1, 1, 1, 3, 3, 6, 8, 6, 8, 6,
+                 8, 6, 8, 6, 8)
+  } else {
+    ret_val <- c(5, 10, 1, 4, 1, 1, 2, 3, 5, 4,
+                 1, 1, 1, 3, 3, 10, 10, 10, 10, 10,
+                 10, 10, 10, 10, 10)
+  }
+
+  ret_val
 }
 
