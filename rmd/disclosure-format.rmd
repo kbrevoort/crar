@@ -1,0 +1,36 @@
+---
+title: "D1-1 Disclosure Formats"
+author: "Kenneth Brevoort"
+date: "2/17/2019"
+output: html_document
+---
+
+Row | Name            | Width Year |           |           |
+----|-----------------|------------|-----------|-----------|
+    |                 | 1996       | 1997-2003 | 2004-???? |
+    | Number of rows  | 113        | 114       | 145       |
+1   | table_id        | 4          | 5         | 5         |
+2   | respondent      | 10         | 10        | 10        |
+3   | agency          | 1          | 1         | 1         |
+4   | year            | 4          | 4         | 4         |
+5   | loan_type       | 1          | 1         | 1         |
+6   | action          | 1          | 1         | 1         |
+7   | state           | 2          | 2         | 2         |
+8   | county          | 3          | 3         | 3         |
+9   | metro_area      | 4          | 4         | 5         |
+10  | assessment_area | 4          | 4         | 4         |
+11  | partial_county  | 1          | 1         | 1         |
+12  | split_county    | 1          | 1         | 1         |
+13  | population_cd   | 1          | 1         | 1         |
+14  | income_cd       | 3          | 3         | 3         |
+15  | report_level    | 3          | 3         | 3         |
+16  | num_le100k      | 6          | 6         | 10        |
+17  | amt_le100k      | 8          | 8         | 10        |
+18  | num_100to250k   | 6          | 6         | 10        |
+19  | amt_100to250k   | 8          | 8         | 10        |
+20  | num_250to1m     | 6          | 6         | 10        |
+21  | amt_250to1m     | 8          | 8         | 10        |
+22  | num_sbl         | 6          | 6         | 10        |
+23  | amt_sbl         | 8          | 8         | 10        |
+24  | num_affiliate   | 6          | 6         | 10        |
+25  | amt_affiliate   | 8          | 8         | 10        |
