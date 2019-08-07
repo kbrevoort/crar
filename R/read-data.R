@@ -45,7 +45,9 @@ import_transmittal_file <- function(year) {
                  tax_id = substr(in_chr, 123, 132),
                  id_rssd = stringr::str_trim(substr(in_chr, 133, 142)),
                  assets = to_numeric(substr(in_chr, 143, 152))) %>%
-    mutate(id_rssd = ifelse(id_rssd == '', -1 * respondent, as.numeric(id_rssd)))
+    mutate(id_rssd = ifelse(id_rssd == '',
+                            -1 * ((respondent * 10) + as.numeric(agency)),
+                            as.numeric(id_rssd)))
 }
 
 #' Import Disclosure File D1-1
@@ -153,7 +155,7 @@ import_disclosure_file_d11 <- function(year) {
                    num_affiliate = as.numeric(substr(V1, s[24], e[24])),
                    amt_affiliate = as.numeric(substr(V1, s[25], e[25]))) %>%
     left_join(idrssd_map, by = 'respondent') %>%
-    select(-V1, -respondent)
+    select(-V1)
 
   select(ret_dt, c('id_rssd', names(ret_dt)))
 }
